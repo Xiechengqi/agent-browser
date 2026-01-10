@@ -356,6 +356,16 @@ function printResponse(response: Response, jsonMode: boolean): void {
     console.log(c('yellow', '⚠'), data.note);
   } else if (data.requestCount !== undefined) {
     console.log(c('green', '✓'), `HAR saved (${data.requestCount} requests)`);
+  } else if (data.moved) {
+    console.log(c('green', '✓'), `Mouse moved to (${data.x}, ${data.y})`);
+  } else if (data.down) {
+    console.log(c('green', '✓'), 'Mouse down');
+  } else if (data.up) {
+    console.log(c('green', '✓'), 'Mouse up');
+  } else if (data.focused) {
+    console.log(c('green', '✓'), 'Brought to front');
+  } else if (data.state) {
+    console.log(c('green', '✓'), `Load state: ${data.state}`);
   } else {
     console.log(c('green', '✓'), JSON.stringify(data));
   }
@@ -1269,6 +1279,179 @@ async function main(): Promise<void> {
     
     case 'pause': {
       cmd = { id, action: 'pause' };
+      break;
+    }
+    
+    case 'alttext':
+    case 'alt': {
+      const text = cleanArgs[1];
+      const subaction = cleanArgs[2] || 'click';
+      if (!text) {
+        console.error(c('red', 'Error:'), 'Alt text required');
+        process.exit(1);
+      }
+      cmd = { id, action: 'getbyalttext', text, subaction, exact: exactMode };
+      break;
+    }
+    
+    case 'bytitle': {
+      const text = cleanArgs[1];
+      const subaction = cleanArgs[2] || 'click';
+      if (!text) {
+        console.error(c('red', 'Error:'), 'Title text required');
+        process.exit(1);
+      }
+      cmd = { id, action: 'getbytitle', text, subaction, exact: exactMode };
+      break;
+    }
+    
+    case 'testid':
+    case 'data-testid': {
+      const testId = cleanArgs[1];
+      const subaction = cleanArgs[2] || 'click';
+      const value = cleanArgs[3];
+      if (!testId) {
+        console.error(c('red', 'Error:'), 'Test ID required');
+        process.exit(1);
+      }
+      cmd = { id, action: 'getbytestid', testId, subaction, value };
+      break;
+    }
+    
+    case 'first': {
+      const selector = cleanArgs[1];
+      const subaction = cleanArgs[2] || 'click';
+      const value = cleanArgs[3];
+      if (!selector) {
+        console.error(c('red', 'Error:'), 'Selector required');
+        process.exit(1);
+      }
+      cmd = { id, action: 'nth', selector, index: 0, subaction, value };
+      break;
+    }
+    
+    case 'last': {
+      const selector = cleanArgs[1];
+      const subaction = cleanArgs[2] || 'click';
+      const value = cleanArgs[3];
+      if (!selector) {
+        console.error(c('red', 'Error:'), 'Selector required');
+        process.exit(1);
+      }
+      cmd = { id, action: 'nth', selector, index: -1, subaction, value };
+      break;
+    }
+    
+    case 'nth': {
+      const selector = cleanArgs[1];
+      const index = parseInt(cleanArgs[2], 10);
+      const subaction = cleanArgs[3] || 'click';
+      const value = cleanArgs[4];
+      if (!selector || isNaN(index)) {
+        console.error(c('red', 'Error:'), 'Selector and index required');
+        process.exit(1);
+      }
+      cmd = { id, action: 'nth', selector, index, subaction, value };
+      break;
+    }
+    
+    case 'waitforurl':
+    case 'wait-for-url': {
+      const url = cleanArgs[1];
+      if (!url) {
+        console.error(c('red', 'Error:'), 'URL pattern required');
+        process.exit(1);
+      }
+      cmd = { id, action: 'waitforurl', url };
+      break;
+    }
+    
+    case 'waitforload':
+    case 'wait-for-load': {
+      const state = cleanArgs[1] || 'load';
+      if (!['load', 'domcontentloaded', 'networkidle'].includes(state)) {
+        console.error(c('red', 'Error:'), 'State must be: load, domcontentloaded, or networkidle');
+        process.exit(1);
+      }
+      cmd = { id, action: 'waitforloadstate', state };
+      break;
+    }
+    
+    case 'setcontent':
+    case 'set-content':
+    case 'html': {
+      const html = cleanArgs[1];
+      if (!html) {
+        console.error(c('red', 'Error:'), 'HTML content required');
+        process.exit(1);
+      }
+      cmd = { id, action: 'setcontent', html };
+      break;
+    }
+    
+    case 'timezone':
+    case 'tz': {
+      const timezone = cleanArgs[1];
+      if (!timezone) {
+        console.error(c('red', 'Error:'), 'Timezone required (e.g., America/New_York)');
+        process.exit(1);
+      }
+      cmd = { id, action: 'timezone', timezone };
+      break;
+    }
+    
+    case 'locale':
+    case 'lang': {
+      const locale = cleanArgs[1];
+      if (!locale) {
+        console.error(c('red', 'Error:'), 'Locale required (e.g., en-US)');
+        process.exit(1);
+      }
+      cmd = { id, action: 'locale', locale };
+      break;
+    }
+    
+    case 'credentials':
+    case 'auth': {
+      const username = cleanArgs[1];
+      const password = cleanArgs[2];
+      if (!username || !password) {
+        console.error(c('red', 'Error:'), 'Username and password required');
+        process.exit(1);
+      }
+      cmd = { id, action: 'credentials', username, password };
+      break;
+    }
+    
+    case 'mousemove':
+    case 'mouse-move': {
+      const x = parseInt(cleanArgs[1], 10);
+      const y = parseInt(cleanArgs[2], 10);
+      if (isNaN(x) || isNaN(y)) {
+        console.error(c('red', 'Error:'), 'X and Y coordinates required');
+        process.exit(1);
+      }
+      cmd = { id, action: 'mousemove', x, y };
+      break;
+    }
+    
+    case 'mousedown':
+    case 'mouse-down': {
+      const button = cleanArgs[1] as 'left' | 'right' | 'middle' | undefined;
+      cmd = { id, action: 'mousedown', button };
+      break;
+    }
+    
+    case 'mouseup':
+    case 'mouse-up': {
+      const button = cleanArgs[1] as 'left' | 'right' | 'middle' | undefined;
+      cmd = { id, action: 'mouseup', button };
+      break;
+    }
+    
+    case 'focus-tab':
+    case 'bringtofront': {
+      cmd = { id, action: 'bringtofront' };
       break;
     }
     

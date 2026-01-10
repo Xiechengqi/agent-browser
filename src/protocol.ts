@@ -445,6 +445,88 @@ const pauseSchema = baseCommandSchema.extend({
   action: z.literal('pause'),
 });
 
+const getByAltTextSchema = baseCommandSchema.extend({
+  action: z.literal('getbyalttext'),
+  text: z.string().min(1),
+  exact: z.boolean().optional(),
+  subaction: z.enum(['click', 'hover']),
+});
+
+const getByTitleSchema = baseCommandSchema.extend({
+  action: z.literal('getbytitle'),
+  text: z.string().min(1),
+  exact: z.boolean().optional(),
+  subaction: z.enum(['click', 'hover']),
+});
+
+const getByTestIdSchema = baseCommandSchema.extend({
+  action: z.literal('getbytestid'),
+  testId: z.string().min(1),
+  subaction: z.enum(['click', 'fill', 'check', 'hover']),
+  value: z.string().optional(),
+});
+
+const nthSchema = baseCommandSchema.extend({
+  action: z.literal('nth'),
+  selector: z.string().min(1),
+  index: z.number(),
+  subaction: z.enum(['click', 'fill', 'check', 'hover', 'text']),
+  value: z.string().optional(),
+});
+
+const waitForUrlSchema = baseCommandSchema.extend({
+  action: z.literal('waitforurl'),
+  url: z.string().min(1),
+  timeout: z.number().positive().optional(),
+});
+
+const waitForLoadStateSchema = baseCommandSchema.extend({
+  action: z.literal('waitforloadstate'),
+  state: z.enum(['load', 'domcontentloaded', 'networkidle']),
+  timeout: z.number().positive().optional(),
+});
+
+const setContentSchema = baseCommandSchema.extend({
+  action: z.literal('setcontent'),
+  html: z.string(),
+});
+
+const timezoneSchema = baseCommandSchema.extend({
+  action: z.literal('timezone'),
+  timezone: z.string().min(1),
+});
+
+const localeSchema = baseCommandSchema.extend({
+  action: z.literal('locale'),
+  locale: z.string().min(1),
+});
+
+const credentialsSchema = baseCommandSchema.extend({
+  action: z.literal('credentials'),
+  username: z.string(),
+  password: z.string(),
+});
+
+const mouseMoveSchema = baseCommandSchema.extend({
+  action: z.literal('mousemove'),
+  x: z.number(),
+  y: z.number(),
+});
+
+const mouseDownSchema = baseCommandSchema.extend({
+  action: z.literal('mousedown'),
+  button: z.enum(['left', 'right', 'middle']).optional(),
+});
+
+const mouseUpSchema = baseCommandSchema.extend({
+  action: z.literal('mouseup'),
+  button: z.enum(['left', 'right', 'middle']).optional(),
+});
+
+const bringToFrontSchema = baseCommandSchema.extend({
+  action: z.literal('bringtofront'),
+});
+
 const pressSchema = baseCommandSchema.extend({
   action: z.literal('press'),
   key: z.string().min(1),
@@ -626,6 +708,20 @@ const commandSchema = z.discriminatedUnion('action', [
   offlineSchema,
   headersSchema,
   pauseSchema,
+  getByAltTextSchema,
+  getByTitleSchema,
+  getByTestIdSchema,
+  nthSchema,
+  waitForUrlSchema,
+  waitForLoadStateSchema,
+  setContentSchema,
+  timezoneSchema,
+  localeSchema,
+  credentialsSchema,
+  mouseMoveSchema,
+  mouseDownSchema,
+  mouseUpSchema,
+  bringToFrontSchema,
 ]);
 
 // Parse result type

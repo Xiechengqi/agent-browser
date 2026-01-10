@@ -294,6 +294,98 @@ export interface BoundingBoxCommand extends BaseCommand {
   selector: string;
 }
 
+// More semantic locators
+export interface GetByAltTextCommand extends BaseCommand {
+  action: 'getbyalttext';
+  text: string;
+  exact?: boolean;
+  subaction: 'click' | 'hover';
+}
+
+export interface GetByTitleCommand extends BaseCommand {
+  action: 'getbytitle';
+  text: string;
+  exact?: boolean;
+  subaction: 'click' | 'hover';
+}
+
+export interface GetByTestIdCommand extends BaseCommand {
+  action: 'getbytestid';
+  testId: string;
+  subaction: 'click' | 'fill' | 'check' | 'hover';
+  value?: string;
+}
+
+// Nth element selection
+export interface NthCommand extends BaseCommand {
+  action: 'nth';
+  selector: string;
+  index: number; // 0-based, or -1 for last
+  subaction: 'click' | 'fill' | 'check' | 'hover' | 'text';
+  value?: string;
+}
+
+// Wait for URL
+export interface WaitForUrlCommand extends BaseCommand {
+  action: 'waitforurl';
+  url: string;
+  timeout?: number;
+}
+
+// Wait for load state
+export interface WaitForLoadStateCommand extends BaseCommand {
+  action: 'waitforloadstate';
+  state: 'load' | 'domcontentloaded' | 'networkidle';
+  timeout?: number;
+}
+
+// Set HTML content
+export interface SetContentCommand extends BaseCommand {
+  action: 'setcontent';
+  html: string;
+}
+
+// Timezone emulation
+export interface TimezoneCommand extends BaseCommand {
+  action: 'timezone';
+  timezone: string;
+}
+
+// Locale emulation
+export interface LocaleCommand extends BaseCommand {
+  action: 'locale';
+  locale: string;
+}
+
+// HTTP basic auth
+export interface HttpCredentialsCommand extends BaseCommand {
+  action: 'credentials';
+  username: string;
+  password: string;
+}
+
+// Fine-grained mouse control
+export interface MouseMoveCommand extends BaseCommand {
+  action: 'mousemove';
+  x: number;
+  y: number;
+}
+
+export interface MouseDownCommand extends BaseCommand {
+  action: 'mousedown';
+  button?: 'left' | 'right' | 'middle';
+}
+
+export interface MouseUpCommand extends BaseCommand {
+  action: 'mouseup';
+  button?: 'left' | 'right' | 'middle';
+}
+
+// Bring to front
+export interface BringToFrontCommand extends BaseCommand {
+  action: 'bringtofront';
+}
+
 // Video recording
 export interface VideoStartCommand extends BaseCommand {
   action: 'video_start';
@@ -654,7 +746,21 @@ export type Command =
   | EmulateMediaCommand
   | OfflineCommand
   | HeadersCommand
-  | PauseCommand;
+  | PauseCommand
+  | GetByAltTextCommand
+  | GetByTitleCommand
+  | GetByTestIdCommand
+  | NthCommand
+  | WaitForUrlCommand
+  | WaitForLoadStateCommand
+  | SetContentCommand
+  | TimezoneCommand
+  | LocaleCommand
+  | HttpCredentialsCommand
+  | MouseMoveCommand
+  | MouseDownCommand
+  | MouseUpCommand
+  | BringToFrontCommand;
 
 // Response types
 export interface SuccessResponse<T = unknown> {

@@ -72,6 +72,19 @@ import type {
   EmulateMediaCommand,
   OfflineCommand,
   HeadersCommand,
+  GetByAltTextCommand,
+  GetByTitleCommand,
+  GetByTestIdCommand,
+  NthCommand,
+  WaitForUrlCommand,
+  WaitForLoadStateCommand,
+  SetContentCommand,
+  TimezoneCommand,
+  LocaleCommand,
+  HttpCredentialsCommand,
+  MouseMoveCommand,
+  MouseDownCommand,
+  MouseUpCommand,
   NavigateData,
   ScreenshotData,
   EvaluateData,
@@ -279,6 +292,34 @@ export async function executeCommand(
         return await handleHeaders(command, browser);
       case 'pause':
         return await handlePause(command, browser);
+      case 'getbyalttext':
+        return await handleGetByAltText(command, browser);
+      case 'getbytitle':
+        return await handleGetByTitle(command, browser);
+      case 'getbytestid':
+        return await handleGetByTestId(command, browser);
+      case 'nth':
+        return await handleNth(command, browser);
+      case 'waitforurl':
+        return await handleWaitForUrl(command, browser);
+      case 'waitforloadstate':
+        return await handleWaitForLoadState(command, browser);
+      case 'setcontent':
+        return await handleSetContent(command, browser);
+      case 'timezone':
+        return await handleTimezone(command, browser);
+      case 'locale':
+        return await handleLocale(command, browser);
+      case 'credentials':
+        return await handleCredentials(command, browser);
+      case 'mousemove':
+        return await handleMouseMove(command, browser);
+      case 'mousedown':
+        return await handleMouseDown(command, browser);
+      case 'mouseup':
+        return await handleMouseUp(command, browser);
+      case 'bringtofront':
+        return await handleBringToFront(command, browser);
       default: {
         // TypeScript narrows to never here, but we handle it for safety
         const unknownCommand = command as { id: string; action: string };
@@ -1394,4 +1435,188 @@ async function handlePause(
   const page = browser.getPage();
   await page.pause();
   return successResponse(command.id, { paused: true });
+}
+
+async function handleGetByAltText(
+  command: GetByAltTextCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  const locator = page.getByAltText(command.text, { exact: command.exact });
+  
+  switch (command.subaction) {
+    case 'click':
+      await locator.click();
+      return successResponse(command.id, { clicked: true });
+    case 'hover':
+      await locator.hover();
+      return successResponse(command.id, { hovered: true });
+  }
+}
+
+async function handleGetByTitle(
+  command: GetByTitleCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  const locator = page.getByTitle(command.text, { exact: command.exact });
+  
+  switch (command.subaction) {
+    case 'click':
+      await locator.click();
+      return successResponse(command.id, { clicked: true });
+    case 'hover':
+      await locator.hover();
+      return successResponse(command.id, { hovered: true });
+  }
+}
+
+async function handleGetByTestId(
+  command: GetByTestIdCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  const locator = page.getByTestId(command.testId);
+  
+  switch (command.subaction) {
+    case 'click':
+      await locator.click();
+      return successResponse(command.id, { clicked: true });
+    case 'fill':
+      await locator.fill(command.value ?? '');
+      return successResponse(command.id, { filled: true });
+    case 'check':
+      await locator.check();
+      return successResponse(command.id, { checked: true });
+    case 'hover':
+      await locator.hover();
+      return successResponse(command.id, { hovered: true });
+  }
+}
+
+async function handleNth(
+  command: NthCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  const base = page.locator(command.selector);
+  const locator = command.index === -1 ? base.last() : base.nth(command.index);
+  
+  switch (command.subaction) {
+    case 'click':
+      await locator.click();
+      return successResponse(command.id, { clicked: true });
+    case 'fill':
+      await locator.fill(command.value ?? '');
+      return successResponse(command.id, { filled: true });
+    case 'check':
+      await locator.check();
+      return successResponse(command.id, { checked: true });
+    case 'hover':
+      await locator.hover();
+      return successResponse(command.id, { hovered: true });
+    case 'text':
+      const text = await locator.textContent();
+      return successResponse(command.id, { text });
+  }
+}
+
+async function handleWaitForUrl(
+  command: WaitForUrlCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  await page.waitForURL(command.url, { timeout: command.timeout });
+  return successResponse(command.id, { url: page.url() });
+}
+
+async function handleWaitForLoadState(
+  command: WaitForLoadStateCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  await page.waitForLoadState(command.state, { timeout: command.timeout });
+  return successResponse(command.id, { state: command.state });
+}
+
+async function handleSetContent(
+  command: SetContentCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  await page.setContent(command.html);
+  return successResponse(command.id, { set: true });
+}
+
+async function handleTimezone(
+  command: TimezoneCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  // Timezone must be set at context level before navigation
+  // This is a limitation - it sets for the current context
+  const page = browser.getPage();
+  await page.context().setGeolocation({ latitude: 0, longitude: 0 }); // Trigger context awareness
+  return successResponse(command.id, { 
+    note: 'Timezone must be set at browser launch. Use --timezone flag.',
+    timezone: command.timezone,
+  });
+}
+
+async function handleLocale(
+  command: LocaleCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  // Locale must be set at context creation
+  return successResponse(command.id, { 
+    note: 'Locale must be set at browser launch. Use --locale flag.',
+    locale: command.locale,
+  });
+}
+
+async function handleCredentials(
+  command: HttpCredentialsCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const context = browser.getPage().context();
+  await context.setHTTPCredentials({
+    username: command.username,
+    password: command.password,
+  });
+  return successResponse(command.id, { set: true });
+}
+
+async function handleMouseMove(
+  command: MouseMoveCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  await page.mouse.move(command.x, command.y);
+  return successResponse(command.id, { moved: true, x: command.x, y: command.y });
+}
+
+async function handleMouseDown(
+  command: MouseDownCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  await page.mouse.down({ button: command.button ?? 'left' });
+  return successResponse(command.id, { down: true });
+}
+
+async function handleMouseUp(
+  command: MouseUpCommand,
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  await page.mouse.up({ button: command.button ?? 'left' });
+  return successResponse(command.id, { up: true });
+}
+
+async function handleBringToFront(
+  command: Command & { action: 'bringtofront' },
+  browser: BrowserManager
+): Promise<Response> {
+  const page = browser.getPage();
+  await page.bringToFront();
+  return successResponse(command.id, { focused: true });
 }

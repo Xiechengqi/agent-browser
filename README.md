@@ -49,6 +49,10 @@ veb focus "#input"
 veb drag "#source" "#target"
 veb wheel 300                        # Scroll wheel (deltaY)
 veb wheel 0 100                      # Scroll wheel (deltaX, deltaY)
+veb mousemove 100 200                # Move mouse to coordinates
+veb mousedown                        # Press mouse button
+veb mouseup                          # Release mouse button
+veb mousedown right                  # Right-click down
 
 # Text operations
 veb selectall "#input"               # Select all text
@@ -67,6 +71,9 @@ veb download "#download-btn" ./file.zip
 veb wait "#loading"              # Wait for selector
 veb wait --text "Welcome"        # Wait for text
 veb wait 2000                    # Wait 2 seconds
+veb waitforurl "**/dashboard"    # Wait for URL pattern
+veb waitforload networkidle      # Wait for network idle
+veb waitforload domcontentloaded # Wait for DOM ready
 
 # Screenshots & PDF
 veb screenshot page.png
@@ -104,6 +111,15 @@ veb text "Sign In" click
 veb text "Submit" click --exact
 veb label "Email" fill "test@test.com"
 veb placeholder "Search..." fill "query"
+veb alt "Logo" click              # By alt text
+veb bytitle "Close" click         # By title attribute
+veb testid "submit-btn" click     # By data-testid
+
+# Nth element (when multiple match)
+veb first "a" click               # Click first link
+veb last "a" click                # Click last link
+veb nth "a" 2 click               # Click 3rd link (0-indexed)
+veb first ".item" text            # Get text of first item
 
 # Frames/iframes
 veb frame "#iframe"              # Switch to iframe
@@ -128,6 +144,9 @@ veb media --reduced-motion       # Reduced motion
 veb offline                      # Enable offline mode
 veb offline off                  # Disable offline mode
 veb headers '{"X-Custom":"value"}'  # Set extra headers
+veb credentials user pass        # HTTP basic auth
+veb timezone America/New_York    # Set timezone (at launch)
+veb locale fr-FR                 # Set locale (at launch)
 
 # Cookies
 veb cookies                      # Get all cookies
@@ -163,6 +182,7 @@ veb addscript "console.log('hi')"
 veb addscript https://example.com/lib.js
 veb addstyle "body { background: red; }"
 veb addstyle https://example.com/styles.css
+veb setcontent '<h1>Hello</h1>'  # Set page HTML directly
 
 # Custom events
 veb dispatch "#btn" "click"
@@ -255,6 +275,12 @@ veb isvisible "#modal" --json
 | `text <text> <action>` | By text |
 | `label <label> <action>` | By label |
 | `placeholder <ph> <action>` | By placeholder |
+| `alt <text> <action>` | By alt text |
+| `bytitle <text> <action>` | By title attr |
+| `testid <id> <action>` | By data-testid |
+| `first <sel> <action>` | First match |
+| `last <sel> <action>` | Last match |
+| `nth <sel> <n> <action>` | Nth match |
 
 ### Content & Screenshots
 | Command | Description |
@@ -263,8 +289,11 @@ veb isvisible "#modal" --json
 | `pdf <path>` | Save as PDF |
 | `snapshot` | Accessibility tree |
 | `extract <selector>` | Get HTML |
+| `setcontent <html>` | Set page HTML |
 | `eval <script>` | Run JavaScript |
 | `wait <sel\|text\|ms>` | Wait |
+| `waitforurl <pattern>` | Wait for URL |
+| `waitforload <state>` | Wait for load |
 
 ### Network
 | Command | Description |
@@ -283,6 +312,16 @@ veb isvisible "#modal" --json
 | `media [options]` | Emulate media |
 | `offline [on\|off]` | Offline mode |
 | `headers <json>` | Extra HTTP headers |
+| `credentials <u> <p>` | HTTP basic auth |
+| `timezone <tz>` | Set timezone |
+| `locale <locale>` | Set locale |
+
+### Mouse Control
+| Command | Description |
+|---------|-------------|
+| `mousemove <x> <y>` | Move mouse |
+| `mousedown [button]` | Press button |
+| `mouseup [button]` | Release button |
 
 ### Browser State
 | Command | Description |
