@@ -108,6 +108,7 @@ import { successResponse, errorResponse } from './protocol.js';
 // Snapshot response type
 interface SnapshotData {
   snapshot: string;
+  refs?: Record<string, { role: string; name?: string }>;
 }
 
 /**
@@ -380,8 +381,10 @@ async function handleNavigate(
 }
 
 async function handleClick(command: ClickCommand, browser: BrowserManager): Promise<Response> {
-  const page = browser.getPage();
-  await page.click(command.selector, {
+  // Support both refs (@e1) and regular selectors
+  const locator = browser.getLocator(command.selector);
+  
+  await locator.click({
     button: command.button,
     clickCount: command.clickCount,
     delay: command.delay,
@@ -391,13 +394,13 @@ async function handleClick(command: ClickCommand, browser: BrowserManager): Prom
 }
 
 async function handleType(command: TypeCommand, browser: BrowserManager): Promise<Response> {
-  const page = browser.getPage();
+  const locator = browser.getLocator(command.selector);
 
   if (command.clear) {
-    await page.fill(command.selector, '');
+    await locator.fill('');
   }
 
-  await page.type(command.selector, command.text, {
+  await locator.pressSequentially(command.text, {
     delay: command.delay,
   });
 
@@ -449,12 +452,18 @@ async function handleSnapshot(
   command: Command & { action: 'snapshot' },
   browser: BrowserManager
 ): Promise<Response<SnapshotData>> {
-  const page = browser.getPage();
-  // Use ariaSnapshot which returns a string representation of the accessibility tree
-  const snapshot = await page.locator(':root').ariaSnapshot();
+  // Use enhanced snapshot with refs
+  const { tree, refs } = await browser.getSnapshot();
+
+  // Simplify refs for output (just role and name)
+  const simpleRefs: Record<string, { role: string; name?: string }> = {};
+  for (const [ref, data] of Object.entries(refs)) {
+    simpleRefs[ref] = { role: data.role, name: data.name };
+  }
 
   return successResponse(command.id, {
-    snapshot: snapshot ?? 'Empty page',
+    snapshot: tree || 'Empty page',
+    refs: Object.keys(simpleRefs).length > 0 ? simpleRefs : undefined,
   });
 }
 
@@ -533,17 +542,17 @@ async function handleScroll(command: ScrollCommand, browser: BrowserManager): Pr
 }
 
 async function handleSelect(command: SelectCommand, browser: BrowserManager): Promise<Response> {
-  const page = browser.getPage();
+  const locator = browser.getLocator(command.selector);
   const values = Array.isArray(command.values) ? command.values : [command.values];
 
-  await page.selectOption(command.selector, values);
+  await locator.selectOption(values);
 
   return successResponse(command.id, { selected: values });
 }
 
 async function handleHover(command: HoverCommand, browser: BrowserManager): Promise<Response> {
-  const page = browser.getPage();
-  await page.hover(command.selector);
+  const locator = browser.getLocator(command.selector);
+  await locator.hover();
 
   return successResponse(command.id, { hovered: true });
 }
@@ -622,27 +631,27 @@ async function handleWindowNew(
 // New handlers for enhanced Playwright parity
 
 async function handleFill(command: FillCommand, browser: BrowserManager): Promise<Response> {
-  const frame = browser.getFrame();
-  await frame.fill(command.selector, command.value);
+  const locator = browser.getLocator(command.selector);
+  await locator.fill(command.value);
   return successResponse(command.id, { filled: true });
 }
 
 async function handleCheck(command: CheckCommand, browser: BrowserManager): Promise<Response> {
-  const frame = browser.getFrame();
-  await frame.check(command.selector);
+  const locator = browser.getLocator(command.selector);
+  await locator.check();
   return successResponse(command.id, { checked: true });
 }
 
 async function handleUncheck(command: UncheckCommand, browser: BrowserManager): Promise<Response> {
-  const frame = browser.getFrame();
-  await frame.uncheck(command.selector);
+  const locator = browser.getLocator(command.selector);
+  await locator.uncheck();
   return successResponse(command.id, { unchecked: true });
 }
 
 async function handleUpload(command: UploadCommand, browser: BrowserManager): Promise<Response> {
-  const frame = browser.getFrame();
+  const locator = browser.getLocator(command.selector);
   const files = Array.isArray(command.files) ? command.files : [command.files];
-  await frame.setInputFiles(command.selector, files);
+  await locator.setInputFiles(files);
   return successResponse(command.id, { uploaded: files });
 }
 
@@ -650,14 +659,14 @@ async function handleDoubleClick(
   command: DoubleClickCommand,
   browser: BrowserManager
 ): Promise<Response> {
-  const frame = browser.getFrame();
-  await frame.dblclick(command.selector);
+  const locator = browser.getLocator(command.selector);
+  await locator.dblclick();
   return successResponse(command.id, { clicked: true });
 }
 
 async function handleFocus(command: FocusCommand, browser: BrowserManager): Promise<Response> {
-  const frame = browser.getFrame();
-  await frame.focus(command.selector);
+  const locator = browser.getLocator(command.selector);
+  await locator.focus();
   return successResponse(command.id, { focused: true });
 }
 
@@ -1017,14 +1026,14 @@ async function handleGetAttribute(
   command: GetAttributeCommand,
   browser: BrowserManager
 ): Promise<Response> {
-  const page = browser.getPage();
-  const value = await page.getAttribute(command.selector, command.attribute);
+  const locator = browser.getLocator(command.selector);
+  const value = await locator.getAttribute(command.attribute);
   return successResponse(command.id, { attribute: command.attribute, value });
 }
 
 async function handleGetText(command: GetTextCommand, browser: BrowserManager): Promise<Response> {
-  const page = browser.getPage();
-  const text = await page.textContent(command.selector);
+  const locator = browser.getLocator(command.selector);
+  const text = await locator.textContent();
   return successResponse(command.id, { text });
 }
 
@@ -1032,8 +1041,8 @@ async function handleIsVisible(
   command: IsVisibleCommand,
   browser: BrowserManager
 ): Promise<Response> {
-  const page = browser.getPage();
-  const visible = await page.isVisible(command.selector);
+  const locator = browser.getLocator(command.selector);
+  const visible = await locator.isVisible();
   return successResponse(command.id, { visible });
 }
 
@@ -1041,8 +1050,8 @@ async function handleIsEnabled(
   command: IsEnabledCommand,
   browser: BrowserManager
 ): Promise<Response> {
-  const page = browser.getPage();
-  const enabled = await page.isEnabled(command.selector);
+  const locator = browser.getLocator(command.selector);
+  const enabled = await locator.isEnabled();
   return successResponse(command.id, { enabled });
 }
 
@@ -1050,8 +1059,8 @@ async function handleIsChecked(
   command: IsCheckedCommand,
   browser: BrowserManager
 ): Promise<Response> {
-  const page = browser.getPage();
-  const checked = await page.isChecked(command.selector);
+  const locator = browser.getLocator(command.selector);
+  const checked = await locator.isChecked();
   return successResponse(command.id, { checked });
 }
 

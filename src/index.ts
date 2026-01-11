@@ -230,7 +230,7 @@ ${c('yellow', 'Usage:')} agent-browser <command> [options]
 
 ${c('yellow', 'Core Commands:')}
   ${c('cyan', 'open')} <url>                 Navigate to URL
-  ${c('cyan', 'click')} <sel>                Click element
+  ${c('cyan', 'click')} <sel>                Click element (or @ref)
   ${c('cyan', 'type')} <sel> <text>          Type into element
   ${c('cyan', 'fill')} <sel> <text>          Clear and fill
   ${c('cyan', 'press')} <key>                Press key (Enter, Tab, Control+a)
@@ -239,9 +239,15 @@ ${c('yellow', 'Core Commands:')}
   ${c('cyan', 'scroll')} <dir> [px]          Scroll (up/down/left/right)
   ${c('cyan', 'wait')} <sel|ms>              Wait for element or time
   ${c('cyan', 'screenshot')} [path]          Take screenshot
-  ${c('cyan', 'snapshot')}                   Accessibility tree (for AI)
+  ${c('cyan', 'snapshot')}                   Accessibility tree with refs (for AI)
   ${c('cyan', 'eval')} <js>                  Run JavaScript
   ${c('cyan', 'close')}                      Close browser
+
+${c('yellow', 'Selectors:')} CSS, XPath, text=, or ${c('green', '@ref')} from snapshot
+  ${c('dim', 'CSS:')}     "#id", ".class", "button"
+  ${c('dim', 'XPath:')}   "xpath=//button"
+  ${c('dim', 'Text:')}    "text=Submit"
+  ${c('dim', 'Ref:')}     ${c('green', '@e1')}, ${c('green', '@e2')} (from snapshot output)
 
 ${c('yellow', 'Get Info:')}  agent-browser get <what> [selector]
   text, html, value, attr, title, url, count, box
@@ -286,13 +292,12 @@ ${c('yellow', 'Options:')}
 
 ${c('yellow', 'Examples:')}
   agent-browser open example.com
-  agent-browser click "#submit"
-  agent-browser fill "#email" "test@example.com"
-  agent-browser get text "h1"
-  agent-browser is visible ".modal"
+  agent-browser snapshot                    # Get tree with refs
+  agent-browser click @e2                   # Click by ref from snapshot
+  agent-browser fill @e3 "test@example.com" # Fill by ref
+  agent-browser click "#submit"             # CSS selector still works
+  agent-browser get text @e1                # Get text by ref
   agent-browser find role button click --name Submit
-  agent-browser wait 2000
-  agent-browser wait --load networkidle
 `);
 }
 

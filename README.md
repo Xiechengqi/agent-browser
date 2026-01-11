@@ -14,11 +14,20 @@ pnpm build
 
 ```bash
 agent-browser open example.com
-agent-browser click "#submit"
-agent-browser fill "#email" "test@example.com"
-agent-browser get text "h1"
+agent-browser snapshot                    # Get accessibility tree with refs
+agent-browser click @e2                   # Click by ref from snapshot
+agent-browser fill @e3 "test@example.com" # Fill by ref
+agent-browser get text @e1                # Get text by ref
 agent-browser screenshot page.png
 agent-browser close
+```
+
+### Traditional Selectors (also supported)
+
+```bash
+agent-browser click "#submit"
+agent-browser fill "#email" "test@example.com"
+agent-browser find role button click --name "Submit"
 ```
 
 ## Commands
@@ -48,7 +57,7 @@ agent-browser upload <sel> <files>    # Upload files
 agent-browser download [path]         # Wait for download
 agent-browser screenshot [path]       # Take screenshot (--full for full page)
 agent-browser pdf <path>              # Save as PDF
-agent-browser snapshot                # Accessibility tree (best for AI)
+agent-browser snapshot                # Accessibility tree with refs (best for AI)
 agent-browser eval <js>               # Run JavaScript
 agent-browser close                   # Close browser
 ```
@@ -244,19 +253,49 @@ agent-browser session list
 
 ## Selectors
 
+### Refs (Recommended for AI)
+
+Refs provide deterministic element selection from snapshots:
+
 ```bash
-# CSS
+# 1. Get snapshot with refs
+agent-browser snapshot
+# Output:
+# - heading "Example Domain" [ref=e1] [level=1]
+# - button "Submit" [ref=e2]
+# - textbox "Email" [ref=e3]
+# - link "Learn more" [ref=e4]
+
+# 2. Use refs to interact
+agent-browser click @e2                   # Click the button
+agent-browser fill @e3 "test@example.com" # Fill the textbox
+agent-browser get text @e1                # Get heading text
+agent-browser hover @e4                   # Hover the link
+```
+
+**Why use refs?**
+- **Deterministic**: Ref points to exact element from snapshot
+- **Fast**: No DOM re-query needed
+- **AI-friendly**: Snapshot + ref workflow is optimal for LLMs
+
+### CSS Selectors
+
+```bash
 agent-browser click "#id"
 agent-browser click ".class"
 agent-browser click "div > button"
+```
 
-# Text
+### Text & XPath
+
+```bash
 agent-browser click "text=Submit"
-
-# XPath
 agent-browser click "xpath=//button"
+```
 
-# Semantic (recommended)
+### Semantic Locators
+
+```bash
 agent-browser find role button click --name "Submit"
 agent-browser find label "Email" fill "test@test.com"
 ```
@@ -267,8 +306,26 @@ Use `--json` for machine-readable output:
 
 ```bash
 agent-browser snapshot --json
-agent-browser get text "h1" --json
-agent-browser is visible ".modal" --json
+# Returns: {"success":true,"data":{"snapshot":"...","refs":{"e1":{"role":"heading","name":"Title"},...}}}
+
+agent-browser get text @e1 --json
+agent-browser is visible @e2 --json
+```
+
+### Optimal AI Workflow
+
+```bash
+# 1. Navigate and get snapshot
+agent-browser open example.com
+agent-browser snapshot --json    # AI parses tree and refs
+
+# 2. AI identifies target refs from snapshot
+# 3. Execute actions using refs
+agent-browser click @e2
+agent-browser fill @e3 "input text"
+
+# 4. Get new snapshot if page changed
+agent-browser snapshot --json
 ```
 
 ## License

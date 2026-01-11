@@ -10,8 +10,10 @@ import {
   type Dialog,
   type Request,
   type Route,
+  type Locator,
 } from 'playwright-core';
 import type { LaunchCommand } from './types.js';
+import { type RefMap, type EnhancedSnapshot, getEnhancedSnapshot, parseRef } from './snapshot.js';
 
 interface TrackedRequest {
   url: string;
@@ -47,12 +49,73 @@ export class BrowserManager {
   private consoleMessages: ConsoleMessage[] = [];
   private pageErrors: PageError[] = [];
   private isRecordingHar: boolean = false;
+  private refMap: RefMap = {};
+  private lastSnapshot: string = '';
 
   /**
    * Check if browser is launched
    */
   isLaunched(): boolean {
     return this.browser !== null;
+  }
+
+  /**
+   * Get enhanced snapshot with refs and cache the ref map
+   */
+  async getSnapshot(): Promise<EnhancedSnapshot> {
+    const page = this.getPage();
+    const snapshot = await getEnhancedSnapshot(page);
+    this.refMap = snapshot.refs;
+    this.lastSnapshot = snapshot.tree;
+    return snapshot;
+  }
+
+  /**
+   * Get the cached ref map from last snapshot
+   */
+  getRefMap(): RefMap {
+    return this.refMap;
+  }
+
+  /**
+   * Get a locator from a ref (e.g., "e1", "@e1", "ref=e1")
+   * Returns null if ref doesn't exist or is invalid
+   */
+  getLocatorFromRef(refArg: string): Locator | null {
+    const ref = parseRef(refArg);
+    if (!ref) return null;
+
+    const refData = this.refMap[ref];
+    if (!refData) return null;
+
+    const page = this.getPage();
+    
+    // Parse the selector and create locator
+    if (refData.name) {
+      return page.getByRole(refData.role as any, { name: refData.name });
+    } else {
+      return page.getByRole(refData.role as any);
+    }
+  }
+
+  /**
+   * Check if a selector looks like a ref
+   */
+  isRef(selector: string): boolean {
+    return parseRef(selector) !== null;
+  }
+
+  /**
+   * Get locator - supports both refs and regular selectors
+   */
+  getLocator(selectorOrRef: string): Locator {
+    // Check if it's a ref first
+    const locator = this.getLocatorFromRef(selectorOrRef);
+    if (locator) return locator;
+
+    // Otherwise treat as regular selector
+    const page = this.getPage();
+    return page.locator(selectorOrRef);
   }
 
   /**
@@ -612,5 +675,7 @@ export class BrowserManager {
     }
 
     this.activePageIndex = 0;
+    this.refMap = {};
+    this.lastSnapshot = '';
   }
 }
