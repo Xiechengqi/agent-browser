@@ -484,6 +484,13 @@ agent-browser --cdp 9222 snapshot
 # Connect to Chrome with remote debugging
 # (Start Chrome with: google-chrome --remote-debugging-port=9222)
 agent-browser --cdp 9222 open about:blank
+
+# Connect with specific user data directory
+# Useful for sharing browser state (cookies, extensions, etc.)
+# 1. Start Chrome with user data dir:
+#    google-chrome --remote-debugging-port=9222 --user-data-dir=/path/to/your/chrome-data
+# 2. Connect with agent-browser:
+agent-browser --cdp 9222 --user-data-dir /path/to/your/chrome-data open https://x.com
 ```
 
 This enables control of:
@@ -491,6 +498,13 @@ This enables control of:
 - Chrome/Chromium instances with remote debugging
 - WebView2 applications
 - Any browser exposing a CDP endpoint
+
+### CDP Mode Options
+
+| Option | Description |
+|--------|-------------|
+| `--cdp <port>` | Connect to browser on CDP port |
+| `--user-data-dir <path>` | Chrome user data directory (for CDP mode) |
 
 ## Streaming (Browser Preview)
 
