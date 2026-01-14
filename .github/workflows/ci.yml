@@ -109,24 +109,41 @@ jobs:
 
       - name: Prepare release package
         run: |
-          mkdir -p release-dir
-          cp cli/target/*/release/agent-browser release-dir/
-          cp -r dist release-dir/
-          cp package.json release-dir/
-          cp bin/agent-browser release-dir/
-          cp -r scripts release-dir/ 2>/dev/null || true
-          cp -r skills release-dir/ 2>/dev/null || true
+          if [ "${{ matrix.target }}" = "arm64" ]; then
+            TARGET_TRIPLE="aarch64-unknown-linux-musl"
+            PLATFORM_SUFFIX="linux-arm64"
+          else
+            TARGET_TRIPLE="x86_64-unknown-linux-musl"
+            PLATFORM_SUFFIX="linux-x64"
+          fi
+
+          # Create a self-contained runtime package that does not require
+          # `npm install` or downloading a Rust binary at deploy time.
+          mkdir -p release-dir/agent-browser
+
+          # Wrapper + native binary (wrapper expects agent-browser-${OS}-${ARCH})
+          cp bin/agent-browser release-dir/agent-browser/agent-browser
+          chmod +x release-dir/agent-browser/agent-browser
+          cp "cli/target/${TARGET_TRIPLE}/release/agent-browser" "release-dir/agent-browser/agent-browser-${PLATFORM_SUFFIX}"
+          chmod +x "release-dir/agent-browser/agent-browser-${PLATFORM_SUFFIX}"
+
+          # Node daemon runtime files
+          cp -r dist release-dir/agent-browser/
+          cp package.json release-dir/agent-browser/
+
+          # Install only production JS deps into a portable node_modules/ (no postinstall scripts)
+          rm -rf node_modules
+          npm ci --omit=dev --ignore-scripts
+          cp -r node_modules release-dir/agent-browser/
+
+          # Optional extras
+          cp -r skills release-dir/agent-browser/ 2>/dev/null || true
 
       - name: Create tarball
         run: |
           cd release-dir
-          if [ "${{ matrix.target }}" = "arm64" ]; then
-            tar czf ../agent-browser-${{ matrix.target }}.tar.gz *
-            echo "RELEASE_FILE=agent-browser-${{ matrix.target }}.tar.gz" >> $GITHUB_ENV
-          else
-            tar czf ../agent-browser-${{ matrix.target }}.tar.gz *
-            echo "RELEASE_FILE=agent-browser-${{ matrix.target }}.tar.gz" >> $GITHUB_ENV
-          fi
+          tar czf ../agent-browser-${{ matrix.target }}.tar.gz agent-browser
+          echo "RELEASE_FILE=agent-browser-${{ matrix.target }}.tar.gz" >> $GITHUB_ENV
           ls -la
 
       - name: Upload artifact

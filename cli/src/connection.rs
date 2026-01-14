@@ -176,6 +176,7 @@ pub fn ensure_daemon(
 
     let daemon_paths = [
         exe_dir.join("daemon.js"),
+        exe_dir.join("dist/daemon.js"),
         exe_dir.join("../dist/daemon.js"),
         PathBuf::from("dist/daemon.js"),
     ];
