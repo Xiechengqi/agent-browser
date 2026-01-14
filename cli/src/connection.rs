@@ -140,7 +140,11 @@ fn is_daemon_running(session: &str) -> bool {
 fn daemon_ready(session: &str) -> bool {
     #[cfg(unix)]
     {
-        get_socket_path(session).exists()
+        let socket_path = get_socket_path(session);
+        if !socket_path.exists() {
+            return false;
+        }
+        UnixStream::connect(&socket_path).is_ok()
     }
     #[cfg(windows)]
     {
@@ -169,6 +173,22 @@ pub fn ensure_daemon(
         return Ok(DaemonResult {
             already_running: true,
         });
+    }
+
+    #[cfg(unix)]
+    {
+        // If the daemon isn't running, remove any stale files that could trick readiness checks
+        // or cause connect attempts to hit a dead Unix socket.
+        if !is_daemon_running(session) {
+            let socket_path = get_socket_path(session);
+            if socket_path.exists() {
+                let _ = fs::remove_file(&socket_path);
+            }
+            let pid_path = get_pid_path(session);
+            if pid_path.exists() {
+                let _ = fs::remove_file(&pid_path);
+            }
+        }
     }
 
     let exe_path = env::current_exe().map_err(|e| e.to_string())?;
