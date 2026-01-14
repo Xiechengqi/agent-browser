@@ -206,11 +206,16 @@ fn main() {
             }
         };
 
-        let launch_cmd = json!({
+        let mut launch_cmd = json!({
             "id": gen_id(),
             "action": "launch",
             "cdpPort": cdp_port
         });
+
+        // Add userDataDir if specified
+        if let Some(ref user_data_dir) = flags.user_data_dir {
+            launch_cmd["userDataDir"] = json!(user_data_dir);
+        }
 
         let err = match send_command(launch_cmd, &flags.session) {
             Ok(resp) if resp.success => None,

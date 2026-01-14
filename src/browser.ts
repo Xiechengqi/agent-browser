@@ -657,7 +657,7 @@ export class BrowserManager {
     }
 
     if (cdpPort) {
-      await this.connectViaCDP(cdpPort);
+      await this.connectViaCDP(cdpPort, options.userDataDir);
       return;
     }
 
@@ -706,12 +706,21 @@ export class BrowserManager {
   /**
    * Connect to a running browser via CDP (Chrome DevTools Protocol)
    */
-  private async connectViaCDP(cdpPort: number | undefined): Promise<void> {
+  private async connectViaCDP(cdpPort: number | undefined, userDataDir?: string): Promise<void> {
     if (!cdpPort) {
       throw new Error('cdpPort is required for CDP connection');
     }
 
-    const browser = await chromium.connectOverCDP(`http://localhost:${cdpPort}`).catch(() => {
+    // Build CDP connection options
+    const cdpUrl = `http://localhost:${cdpPort}`;
+    const connectOptions: any = {};
+
+    // Add userDataDir as Chrome argument if specified
+    if (userDataDir) {
+      connectOptions.args = [`--user-data-dir=${userDataDir}`];
+    }
+
+    const browser = await chromium.connectOverCDP(cdpUrl, connectOptions).catch(() => {
       throw new Error(
         `Failed to connect via CDP on port ${cdpPort}. ` +
           `Make sure the app is running with --remote-debugging-port=${cdpPort}`

@@ -10,6 +10,7 @@ pub struct Flags {
     pub executable_path: Option<String>,
     pub cdp: Option<String>,
     pub extensions: Vec<String>,
+    pub user_data_dir: Option<String>,
 }
 
 pub fn parse_flags(args: &[String]) -> Flags {
@@ -28,6 +29,7 @@ pub fn parse_flags(args: &[String]) -> Flags {
         executable_path: env::var("AGENT_BROWSER_EXECUTABLE_PATH").ok(),
         cdp: None,
         extensions: extensions_env,
+        user_data_dir: None,
     };
 
     let mut i = 0;
@@ -67,6 +69,12 @@ pub fn parse_flags(args: &[String]) -> Flags {
                     i += 1;
                 }
             }
+            "--user-data-dir" => {
+                if let Some(s) = args.get(i + 1) {
+                    flags.user_data_dir = Some(s.clone());
+                    i += 1;
+                }
+            }
             _ => {}
         }
         i += 1;
@@ -81,7 +89,7 @@ pub fn clean_args(args: &[String]) -> Vec<String> {
     // Global flags that should be stripped from command args
     const GLOBAL_FLAGS: &[&str] = &["--json", "--full", "--headed", "--debug"];
     // Global flags that take a value (need to skip the next arg too)
-    const GLOBAL_FLAGS_WITH_VALUE: &[&str] = &["--session", "--headers", "--executable-path", "--cdp", "--extension"];
+    const GLOBAL_FLAGS_WITH_VALUE: &[&str] = &["--session", "--headers", "--executable-path", "--cdp", "--extension", "--user-data-dir"];
 
     for arg in args.iter() {
         if skip_next {
@@ -206,5 +214,36 @@ mod tests {
         let flags = parse_flags(&args("--session test --executable-path /custom/chrome open example.com"));
         assert_eq!(flags.session, "test");
         assert_eq!(flags.executable_path, Some("/custom/chrome".to_string()));
+    }
+
+    #[test]
+    fn test_parse_user_data_dir_flag() {
+        let flags = parse_flags(&args("--user-data-dir /path/to/data open example.com"));
+        assert_eq!(flags.user_data_dir, Some("/path/to/data".to_string()));
+    }
+
+    #[test]
+    fn test_parse_user_data_dir_flag_no_value() {
+        let flags = parse_flags(&args("--user-data-dir"));
+        assert_eq!(flags.user_data_dir, None);
+    }
+
+    #[test]
+    fn test_clean_args_removes_user_data_dir() {
+        let cleaned = clean_args(&args("--user-data-dir /path/to/data open example.com"));
+        assert_eq!(cleaned, vec!["open", "example.com"]);
+    }
+
+    #[test]
+    fn test_clean_args_removes_user_data_dir_with_other_flags() {
+        let cleaned = clean_args(&args("--json --user-data-dir /path/to/data --headed open example.com"));
+        assert_eq!(cleaned, vec!["open", "example.com"]);
+    }
+
+    #[test]
+    fn test_parse_all_cdp_related_flags() {
+        let flags = parse_flags(&args("--cdp 9222 --user-data-dir /path/to/data open example.com"));
+        assert_eq!(flags.cdp, Some("9222".to_string()));
+        assert_eq!(flags.user_data_dir, Some("/path/to/data".to_string()));
     }
 }

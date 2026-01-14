@@ -1196,6 +1196,7 @@ Options:
   --full, -f                 Full page screenshot
   --headed                   Show browser window (not headless)
   --cdp <port>               Connect via CDP (Chrome DevTools Protocol)
+  --user-data-dir <path>     Chrome user data directory (for CDP mode)
   --debug                    Debug output
 
 Environment:
@@ -1212,6 +1213,7 @@ Examples:
   agent-browser get text @e1
   agent-browser screenshot --full
   agent-browser --cdp 9222 snapshot      # Connect via CDP port
+  agent-browser --cdp 9222 --user-data-dir ~/.config/chrome open https://x.com
 "#
     );
 }
