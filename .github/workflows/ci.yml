@@ -133,7 +133,7 @@ jobs:
 
           # Install only production JS deps into a portable node_modules/ (no postinstall scripts)
           rm -rf node_modules
-          npm ci --omit=dev --ignore-scripts
+          pnpm install --prod --frozen-lockfile --ignore-scripts
           cp -r node_modules release-dir/agent-browser/
 
           # Optional extras
