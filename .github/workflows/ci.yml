@@ -42,7 +42,7 @@ jobs:
         run: pnpm test
 
   rust:
-    name: Rust (${{ matrix.target }})
+    name: Rust Build (${{ matrix.target }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -54,6 +54,17 @@ jobs:
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
 
       - name: Install Zig for cross-compilation
         run: |
@@ -80,7 +91,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-${{ matrix.target }}-
 
-      - name: Build release binary
+      - name: Build Rust release binary
         run: |
           if [ "${{ matrix.target }}" = "arm64" ]; then
             cargo zigbuild --release --manifest-path cli/Cargo.toml --target aarch64-unknown-linux-musl
@@ -91,21 +102,38 @@ jobs:
       - name: Run Rust tests
         run: cargo test --manifest-path cli/Cargo.toml
 
-      - name: Prepare release asset
+      - name: Install Node dependencies and build TypeScript
         run: |
+          pnpm install
+          pnpm build
+
+      - name: Prepare release package
+        run: |
+          mkdir -p release-dir
+          cp cli/target/*/release/agent-browser release-dir/
+          cp -r dist release-dir/
+          cp package.json release-dir/
+          cp bin/agent-browser release-dir/
+          cp -r scripts release-dir/ 2>/dev/null || true
+          cp -r skills release-dir/ 2>/dev/null || true
+
+      - name: Create tarball
+        run: |
+          cd release-dir
           if [ "${{ matrix.target }}" = "arm64" ]; then
-            mv cli/target/aarch64-unknown-linux-musl/release/agent-browser agent-browser-linux-arm64
-            echo "RELEASE_ASSET=agent-browser-linux-arm64" >> $GITHUB_ENV
+            tar czf ../agent-browser-${{ matrix.target }}.tar.gz *
+            echo "RELEASE_FILE=agent-browser-${{ matrix.target }}.tar.gz" >> $GITHUB_ENV
           else
-            mv cli/target/x86_64-unknown-linux-musl/release/agent-browser agent-browser-linux-amd64
-            echo "RELEASE_ASSET=agent-browser-linux-amd64" >> $GITHUB_ENV
+            tar czf ../agent-browser-${{ matrix.target }}.tar.gz *
+            echo "RELEASE_FILE=agent-browser-${{ matrix.target }}.tar.gz" >> $GITHUB_ENV
           fi
+          ls -la
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: agent-browser-${{ matrix.target }}
-          path: ${{ env.RELEASE_ASSET }}
+          path: ${{ env.RELEASE_FILE }}
 
   release:
     needs: [typescript, rust]
@@ -124,8 +152,8 @@ jobs:
       - name: Prepare release files
         run: |
           mkdir -p release-files
-          cp artifacts/agent-browser-amd64/agent-browser-linux-amd64 release-files/
-          cp artifacts/agent-browser-arm64/agent-browser-linux-arm64 release-files/
+          cp artifacts/agent-browser-amd64/*.tar.gz release-files/
+          cp artifacts/agent-browser-arm64/*.tar.gz release-files/
           ls -lh release-files/
 
       - name: Get version from package.json
@@ -169,17 +197,23 @@ jobs:
 
             ### Downloads
 
-            - **Linux AMD64**: `agent-browser-linux-amd64`
-            - **Linux ARM64**: `agent-browser-linux-arm64`
+            - **Linux AMD64**: `agent-browser-amd64.tar.gz`
+            - **Linux ARM64**: `agent-browser-arm64.tar.gz`
 
             ### Quick Install
 
             ```bash
             # AMD64
-            wget https://github.com/${{ github.repository }}/releases/download/latest/agent-browser-linux-amd64 -O agent-browser && chmod +x agent-browser
+            wget https://github.com/${{ github.repository }}/releases/download/latest/agent-browser-amd64.tar.gz
+            tar xzf agent-browser-amd64.tar.gz
+            cd agent-browser
+            ./agent-browser --help
 
             # ARM64
-            wget https://github.com/${{ github.repository }}/releases/download/latest/agent-browser-linux-arm64 -O agent-browser && chmod +x agent-browser
+            wget https://github.com/${{ github.repository }}/releases/download/latest/agent-browser-arm64.tar.gz
+            tar xzf agent-browser-arm64.tar.gz
+            cd agent-browser
+            ./agent-browser --help
             ```
           files: release-files/*
           prerelease: false
