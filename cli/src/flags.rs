@@ -28,9 +28,9 @@ pub fn parse_flags(args: &[String]) -> Flags {
         session: env::var("AGENT_BROWSER_SESSION").unwrap_or_else(|_| "default".to_string()),
         headers: None,
         executable_path: env::var("AGENT_BROWSER_EXECUTABLE_PATH").ok(),
-        cdp: None,
+        cdp: env::var("AGENT_BROWSER_CDP_PORT").ok(),
         extensions: extensions_env,
-        user_data_dir: None,
+        user_data_dir: env::var("AGENT_BROWSER_USER_DATA_DIR").ok(),
         proxy: None,
     };
 
