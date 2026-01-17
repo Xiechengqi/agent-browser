@@ -12,7 +12,6 @@ agent-browser open <url>        # Navigate to page
 agent-browser snapshot -i       # Get interactive elements with refs
 agent-browser click @e1         # Click element by ref
 agent-browser fill @e2 "text"   # Fill input by ref
-agent-browser close             # Close browser
 ```
 
 ## Core workflow
@@ -30,7 +29,6 @@ agent-browser open <url>      # Navigate to URL
 agent-browser back            # Go back
 agent-browser forward         # Go forward
 agent-browser reload          # Reload page
-agent-browser close           # Close browser
 ```
 
 ### Snapshot (page analysis)
