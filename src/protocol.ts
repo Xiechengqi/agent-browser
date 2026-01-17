@@ -19,6 +19,17 @@ const launchSchema = baseCommandSchema.extend({
     .optional(),
   browser: z.enum(['chromium', 'firefox', 'webkit']).optional(),
   cdpPort: z.number().positive().optional(),
+  executablePath: z.string().optional(),
+  extensions: z.array(z.string()).optional(),
+  headers: z.record(z.string()).optional(),
+  proxy: z
+    .object({
+      server: z.string().min(1),
+      bypass: z.string().optional(),
+      username: z.string().optional(),
+      password: z.string().optional(),
+    })
+    .optional(),
 });
 
 const navigateSchema = baseCommandSchema.extend({
@@ -302,6 +313,23 @@ const videoStartSchema = baseCommandSchema.extend({
 
 const videoStopSchema = baseCommandSchema.extend({
   action: z.literal('video_stop'),
+});
+
+// Recording schemas (Playwright native video recording)
+const recordingStartSchema = baseCommandSchema.extend({
+  action: z.literal('recording_start'),
+  path: z.string().min(1),
+  url: z.string().min(1).optional(),
+});
+
+const recordingStopSchema = baseCommandSchema.extend({
+  action: z.literal('recording_stop'),
+});
+
+const recordingRestartSchema = baseCommandSchema.extend({
+  action: z.literal('recording_restart'),
+  path: z.string().min(1),
+  url: z.string().min(1).optional(),
 });
 
 const traceStartSchema = baseCommandSchema.extend({
@@ -793,6 +821,9 @@ const commandSchema = z.discriminatedUnion('action', [
   boundingBoxSchema,
   videoStartSchema,
   videoStopSchema,
+  recordingStartSchema,
+  recordingStopSchema,
+  recordingRestartSchema,
   traceStartSchema,
   traceStopSchema,
   harStartSchema,

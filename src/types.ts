@@ -17,6 +17,12 @@ export interface LaunchCommand extends BaseCommand {
   cdpPort?: number;
   extensions?: string[];
   userDataDir?: string;
+  proxy?: {
+    server: string;
+    bypass?: string;
+    username?: string;
+    password?: string;
+  };
 }
 
 export interface NavigateCommand extends BaseCommand {
@@ -503,7 +509,7 @@ export interface InputTouchCommand extends BaseCommand {
   modifiers?: number;
 }
 
-// Video recording
+// Video recording (Playwright native - requires launch-time setup)
 export interface VideoStartCommand extends BaseCommand {
   action: 'video_start';
   path: string;
@@ -511,6 +517,23 @@ export interface VideoStartCommand extends BaseCommand {
 
 export interface VideoStopCommand extends BaseCommand {
   action: 'video_stop';
+}
+
+// Screen recording (Playwright native - creates fresh recording context)
+export interface RecordingStartCommand extends BaseCommand {
+  action: 'recording_start';
+  path: string;
+  url?: string;
+}
+
+export interface RecordingStopCommand extends BaseCommand {
+  action: 'recording_stop';
+}
+
+export interface RecordingRestartCommand extends BaseCommand {
+  action: 'recording_restart';
+  path: string;
+  url?: string;
 }
 
 // Tracing
@@ -836,6 +859,9 @@ export type Command =
   | BoundingBoxCommand
   | VideoStartCommand
   | VideoStopCommand
+  | RecordingStartCommand
+  | RecordingStopCommand
+  | RecordingRestartCommand
   | TraceStartCommand
   | TraceStopCommand
   | HarStartCommand
@@ -966,6 +992,24 @@ export interface ScreencastStartData {
 }
 
 export interface ScreencastStopData {
+  stopped: boolean;
+}
+
+export interface RecordingStartData {
+  started: boolean;
+  path: string;
+}
+
+export interface RecordingStopData {
+  path: string;
+  frames: number;
+  error?: string;
+}
+
+export interface RecordingRestartData {
+  started: boolean;
+  path: string;
+  previousPath?: string;
   stopped: boolean;
 }
 
