@@ -92,13 +92,6 @@ fn get_pid_path(session: &str) -> PathBuf {
     tmp.join(format!("agent-browser-{}.pid", session))
 }
 
-#[cfg(windows)]
-fn get_port_path(session: &str) -> PathBuf {
-    let tmp = env::temp_dir();
-    tmp.join(format!("agent-browser-{}.port", session))
-}
-
-#[cfg(windows)]
 fn get_port_for_session(session: &str) -> u16 {
     let mut hash: i32 = 0;
     for c in session.chars() {
@@ -107,6 +100,23 @@ fn get_port_for_session(session: &str) -> u16 {
     // Correct logic: first take absolute modulo, then cast to u16
     // Using unsigned_abs() to safely handle i32::MIN
     49152 + ((hash.unsigned_abs() as u32 % 16383) as u16)
+}
+
+#[cfg(windows)]
+fn get_port_path(session: &str) -> PathBuf {
+    let tmp = env::temp_dir();
+    tmp.join(format!("agent-browser-{}.port", session))
+}
+
+#[cfg(unix)]
+fn use_tcp() -> bool {
+    match env::var("AGENT_BROWSER_USE_TCP") {
+        Ok(value) => {
+            let normalized = value.trim().to_ascii_lowercase();
+            normalized == "1" || normalized == "true" || normalized == "yes"
+        }
+        Err(_) => false,
+    }
 }
 
 #[cfg(unix)]
@@ -142,8 +152,17 @@ fn is_daemon_running(session: &str) -> bool {
 fn daemon_ready(session: &str) -> bool {
     #[cfg(unix)]
     {
-        let socket_path = get_socket_path(session);
-        UnixStream::connect(&socket_path).is_ok()
+        if use_tcp() {
+            let port = get_port_for_session(session);
+            TcpStream::connect_timeout(
+                &format!("127.0.0.1:{}", port).parse().unwrap(),
+                Duration::from_millis(50),
+            )
+            .is_ok()
+        } else {
+            let socket_path = get_socket_path(session);
+            UnixStream::connect(&socket_path).is_ok()
+        }
     }
     #[cfg(windows)]
     {
@@ -298,10 +317,17 @@ pub fn ensure_daemon(
 fn connect(session: &str) -> Result<Connection, String> {
     #[cfg(unix)]
     {
-        let socket_path = get_socket_path(session);
-        UnixStream::connect(&socket_path)
-            .map(Connection::Unix)
-            .map_err(|e| format!("Failed to connect: {}", e))
+        if use_tcp() {
+            let port = get_port_for_session(session);
+            TcpStream::connect(format!("127.0.0.1:{}", port))
+                .map(Connection::Tcp)
+                .map_err(|e| format!("Failed to connect: {}", e))
+        } else {
+            let socket_path = get_socket_path(session);
+            UnixStream::connect(&socket_path)
+                .map(Connection::Unix)
+                .map_err(|e| format!("Failed to connect: {}", e))
+        }
     }
     #[cfg(windows)]
     {

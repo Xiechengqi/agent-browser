@@ -319,6 +319,15 @@ agent-browser snapshot -i -c -d 5         # Combine options
 | `--cdp <port>` | Connect via Chrome DevTools Protocol |
 | `--debug` | Debug output |
 
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `AGENT_BROWSER_SESSION` | Default session name |
+| `AGENT_BROWSER_EXECUTABLE_PATH` | Custom browser executable path |
+| `AGENT_BROWSER_STREAM_PORT` | Enable WebSocket streaming on port (e.g., 9223) |
+| `AGENT_BROWSER_USE_TCP` | Use TCP instead of Unix socket on Unix (set to `1`, `true`, or `yes`) |
+
 ## Selectors
 
 ### Refs (Recommended for AI)

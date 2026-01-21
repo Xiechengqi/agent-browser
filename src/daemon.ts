@@ -9,6 +9,14 @@ import { StreamServer } from './stream-server.js';
 
 // Platform detection
 const isWindows = process.platform === 'win32';
+const useTcp =
+  !isWindows &&
+  (() => {
+    const value = process.env.AGENT_BROWSER_USE_TCP;
+    if (!value) return false;
+    const normalized = value.trim().toLowerCase();
+    return normalized === '1' || normalized === 'true' || normalized === 'yes';
+  })();
 
 // Session support - each session gets its own socket/pid
 let currentSession = process.env.AGENT_BROWSER_SESSION || 'default';
@@ -101,7 +109,7 @@ export function getConnectionInfo(
   session?: string
 ): { type: 'unix'; path: string } | { type: 'tcp'; port: number } {
   const sess = session ?? currentSession;
-  if (isWindows) {
+  if (isWindows || useTcp) {
     return { type: 'tcp', port: getPortForSession(sess) };
   }
   return { type: 'unix', path: path.join(os.tmpdir(), `agent-browser-${sess}.sock`) };
@@ -116,7 +124,7 @@ export function cleanupSocket(session?: string): void {
   try {
     if (fs.existsSync(pidFile)) fs.unlinkSync(pidFile);
     if (fs.existsSync(streamPortFile)) fs.unlinkSync(streamPortFile);
-    if (isWindows) {
+    if (isWindows || useTcp) {
       const portFile = getPortFile(session);
       if (fs.existsSync(portFile)) fs.unlinkSync(portFile);
     } else {
@@ -241,11 +249,13 @@ export async function startDaemon(options?: { streamPort?: number }): Promise<vo
   // Write PID file before listening
   fs.writeFileSync(pidFile, process.pid.toString());
 
-  if (isWindows) {
-    // Windows: use TCP socket on localhost
+  if (isWindows || useTcp) {
+    // Windows or forced TCP: use TCP socket on localhost
     const port = getPortForSession(currentSession);
-    const portFile = getPortFile();
-    fs.writeFileSync(portFile, port.toString());
+    if (isWindows || useTcp) {
+      const portFile = getPortFile();
+      fs.writeFileSync(portFile, port.toString());
+    }
     server.listen(port, '127.0.0.1', () => {
       // Daemon is ready on TCP port
     });
