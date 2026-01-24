@@ -110,8 +110,12 @@ function isValidBinary(binaryPath) {
 
 async function main() {
   // Check if binary already exists
-  if (existsSync(binaryPath) && isValidBinary(binaryPath)) {
-    console.log(`✓ Native binary already exists: ${binaryName}`);
+  if (existsSync(binaryPath)) {
+    // Ensure binary is executable (npm doesn't preserve execute bit)
+    if (platform() !== 'win32') {
+      chmodSync(binaryPath, 0o755);
+    }
+    console.log(`✓ Native binary ready: ${binaryName}`);
     return;
   }
 
