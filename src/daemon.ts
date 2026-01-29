@@ -59,25 +59,28 @@ function getPortForSession(session: string): number {
  * Get the base directory for socket/pid files.
  * Priority: AGENT_BROWSER_SOCKET_DIR > XDG_RUNTIME_DIR > ~/.agent-browser > tmpdir
  */
-export function getSocketDir(): string {
-  // 1. Explicit override
-  if (process.env.AGENT_BROWSER_SOCKET_DIR) {
-    return process.env.AGENT_BROWSER_SOCKET_DIR;
-  }
-
-  // 2. XDG_RUNTIME_DIR (Linux standard)
+export function getAppDir(): string {
+  // 1. XDG_RUNTIME_DIR (Linux standard)
   if (process.env.XDG_RUNTIME_DIR) {
     return path.join(process.env.XDG_RUNTIME_DIR, 'agent-browser');
   }
 
-  // 3. Home directory fallback (like Docker Desktop's ~/.docker/run/)
+  // 2. Home directory fallback (like Docker Desktop's ~/.docker/run/)
   const homeDir = os.homedir();
   if (homeDir) {
     return path.join(homeDir, '.agent-browser');
   }
 
-  // 4. Last resort: temp dir
+  // 3. Last resort: temp dir
   return path.join(os.tmpdir(), 'agent-browser');
+}
+
+export function getSocketDir(): string {
+  // Allow explicit override for socket directory
+  if (process.env.AGENT_BROWSER_SOCKET_DIR) {
+    return process.env.AGENT_BROWSER_SOCKET_DIR;
+  }
+  return getAppDir();
 }
 
 /**
@@ -204,9 +207,22 @@ export async function startDaemon(options?: { streamPort?: number }): Promise<vo
 
   const server = net.createServer((socket) => {
     let buffer = '';
+    let httpChecked = false;
 
     socket.on('data', async (data) => {
       buffer += data.toString();
+
+      // Security: Detect and reject HTTP requests to prevent cross-origin attacks.
+      // Browsers using fetch() must send HTTP headers (e.g., "POST / HTTP/1.1"),
+      // while legitimate clients send raw JSON starting with "{".
+      if (!httpChecked) {
+        httpChecked = true;
+        const trimmed = buffer.trimStart();
+        if (/^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH|CONNECT|TRACE)\s/i.test(trimmed)) {
+          socket.destroy();
+          return;
+        }
+      }
 
       // Process complete lines
       while (buffer.includes('\n')) {
@@ -256,15 +272,19 @@ export async function startDaemon(options?: { streamPort?: number }): Promise<vo
                 }
               : undefined;
 
+            const ignoreHTTPSErrors = process.env.AGENT_BROWSER_IGNORE_HTTPS_ERRORS === '1';
             await browser.launch({
               id: 'auto',
               action: 'launch' as const,
               headless: process.env.AGENT_BROWSER_HEADED !== '1',
               executablePath: process.env.AGENT_BROWSER_EXECUTABLE_PATH,
               extensions: extensions,
+              profile: process.env.AGENT_BROWSER_PROFILE,
+              storageState: process.env.AGENT_BROWSER_STATE,
               args,
               userAgent: process.env.AGENT_BROWSER_USER_AGENT,
               proxy,
+              ignoreHTTPSErrors: ignoreHTTPSErrors,
             });
           }
 

@@ -1,5 +1,8 @@
 import type { Page, Frame } from 'playwright-core';
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
 import type { BrowserManager, ScreencastFrame } from './browser.js';
+import { getAppDir } from './daemon.js';
 import type {
   Command,
   Response,
@@ -174,6 +177,14 @@ export function toAIFriendlyError(error: unknown, selector: string): Error {
     return new Error(
       `Element "${selector}" is not visible. ` +
         `Try scrolling it into view or check if it's hidden.`
+    );
+  }
+
+  // Handle general timeout (element exists but action couldn't complete)
+  if (message.includes('Timeout') && message.includes('exceeded')) {
+    return new Error(
+      `Action on "${selector}" timed out. The element may be blocked, still loading, or not interactable. ` +
+        `Run 'snapshot' to check the current page state.`
     );
   }
 
@@ -553,13 +564,19 @@ async function handleScreenshot(
   }
 
   try {
-    if (command.path) {
-      await target.screenshot({ ...options, path: command.path });
-      return successResponse(command.id, { path: command.path });
-    } else {
-      const buffer = await target.screenshot(options);
-      return successResponse(command.id, { base64: buffer.toString('base64') });
+    let savePath = command.path;
+    if (!savePath) {
+      const ext = command.format === 'jpeg' ? 'jpg' : 'png';
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const random = Math.random().toString(36).substring(2, 8);
+      const filename = `screenshot-${timestamp}-${random}.${ext}`;
+      const screenshotDir = path.join(getAppDir(), 'tmp', 'screenshots');
+      mkdirSync(screenshotDir, { recursive: true });
+      savePath = path.join(screenshotDir, filename);
     }
+
+    await target.screenshot({ ...options, path: savePath });
+    return successResponse(command.id, { path: savePath });
   } catch (error) {
     if (command.selector) {
       throw toAIFriendlyError(error, command.selector);
@@ -1147,10 +1164,29 @@ async function handleDevice(command: DeviceCommand, browser: BrowserManager): Pr
   // Apply device viewport
   await browser.setViewport(device.viewport.width, device.viewport.height);
 
+  // Apply or clear device scale factor
+  if (device.deviceScaleFactor && device.deviceScaleFactor !== 1) {
+    // Apply device scale factor for HiDPI/retina displays
+    await browser.setDeviceScaleFactor(
+      device.deviceScaleFactor,
+      device.viewport.width,
+      device.viewport.height,
+      device.isMobile ?? false
+    );
+  } else {
+    // Clear device scale factor override to restore default (1x)
+    try {
+      await browser.clearDeviceMetricsOverride();
+    } catch {
+      // Ignore error if override was never set
+    }
+  }
+
   return successResponse(command.id, {
     device: command.device,
     viewport: device.viewport,
     userAgent: device.userAgent,
+    deviceScaleFactor: device.deviceScaleFactor,
   });
 }
 
